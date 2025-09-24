@@ -1,0 +1,87 @@
+# Memory Allocation Strategy for 32GB DDR5 System
+# Intel i5-13420H with 32GB DDR5-5600
+
+total_memory: "32 GB"
+memory_type: "DDR5-5600"
+configuration: "2x 16GB SODIMM"
+
+# ProxMox Host Memory Allocation
+host_allocation:
+  proxmox_host: "4 GB"          # ProxMox host OS
+  kernel_reserved: "1 GB"       # Kernel and system processes
+  buffer_cache: "2 GB"          # File system cache
+  available_for_vms: "25 GB"    # Available for VMs/containers
+
+# Recommended VM Memory Configurations
+vm_templates:
+  small_vm:
+    memory: "2 GB"
+    description: "Lightweight services, monitoring"
+    suitable_for: ["monitoring", "log aggregation", "small web apps"]
+    
+  medium_vm:
+    memory: "4 GB"
+    description: "Standard applications"
+    suitable_for: ["web servers", "API services", "development"]
+    
+  large_vm:
+    memory: "8 GB"
+    description: "Resource-intensive applications"
+    suitable_for: ["databases", "container hosts", "build servers"]
+
+# Sample Infrastructure Layout (using 24GB of 25GB available)
+sample_deployment:
+  management_vm:
+    memory: "2 GB"
+    purpose: "ProxMox management, monitoring tools"
+    
+  web_services_vm:
+    memory: "4 GB"
+    purpose: "Web applications, reverse proxy"
+    
+  database_vm:
+    memory: "6 GB"
+    purpose: "PostgreSQL/MySQL database server"
+    
+  container_host_vm:
+    memory: "8 GB"
+    purpose: "Docker containers, microservices"
+    
+  development_vm:
+    memory: "4 GB"
+    purpose: "Development environment, testing"
+    
+  total_allocated: "24 GB"
+  remaining_buffer: "1 GB"
+
+# Memory Optimization Settings
+optimization:
+  # Kernel Samepage Merging (saves memory with similar VMs)
+  ksm_enabled: true
+  
+  # Balloon driver for dynamic memory adjustment
+  balloon_driver: true
+  
+  # Huge pages for better performance
+  hugepages: "1024"  # 2GB in 2MB pages
+  
+  # Swappiness (lower = less swap usage)
+  vm_swappiness: 10
+  
+  # Dirty memory ratios
+  vm_dirty_ratio: 15
+  vm_dirty_background_ratio: 5
+
+# Memory monitoring thresholds
+monitoring:
+  warning_threshold: "80%"     # Alert at 80% memory usage
+  critical_threshold: "90%"    # Critical alert at 90%
+  
+# Emergency procedures
+emergency:
+  over_allocation_limit: "28 GB"  # Never allocate more than this
+  emergency_shutdown_order:
+    - "development_vm"
+    - "container_host_vm"
+    - "web_services_vm"
+    # Keep management and database VMs running

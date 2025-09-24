@@ -1,0 +1,37 @@
+# Ubuntu Server VM Template Configuration
+template:
+  name: "ubuntu-22.04-server"
+  vmid: 9000
+  
+  resources:
+    cores: 2
+    memory: 4096        # Increased for 32GB system
+    disk_size: "40G"    # Increased for 1TB storage
+    network: "virtio"
+    cpu_type: "host"    # Use host CPU features (Intel i5-13420H)
+    cpu_flags: "+aes,+avx2,+sse4.2"
+    
+  os:
+    type: "ubuntu"
+    version: "22.04"
+    iso: "ubuntu-22.04.3-live-server-amd64.iso"
+    
+  cloud_init:
+    enabled: true
+    user: "admin"
+    ssh_keys: []
+    packages:
+      - "qemu-guest-agent"
+      - "curl"
+      - "wget"
+      - "vim"
+      - "htop"
+      
+  network:
+    interface: "ens18"
+    dhcp: true
+    
+  post_install:
+    - "systemctl enable qemu-guest-agent"
+    - "systemctl start qemu-guest-agent"
+    - "apt update && apt upgrade -y"

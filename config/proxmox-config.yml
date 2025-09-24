@@ -1,0 +1,54 @@
+# ProxMox Infrastructure Configuration
+# Kanal Infrastructure Setup
+
+cluster:
+  name: "kanal-cluster"
+  nodes:
+    - name: "kanal-pve-01"
+      ip: "192.168.1.10"
+      role: "primary"
+      hardware:
+        cpu: "Intel i5-13420H (8C/12T)"
+        memory: "32 GB DDR5-5600"
+        storage: "1 TB NVMe PCIe 4.0"
+        power: "180W"
+
+network:
+  management:
+    subnet: "192.168.1.0/24"
+    gateway: "192.168.1.1"
+    dns: 
+      - "8.8.8.8"
+      - "8.8.4.4"
+  
+  vm_networks:
+    - name: "vm-network"
+      vlan: 100
+      subnet: "10.0.100.0/24"
+      gateway: "10.0.100.1"
+    
+    - name: "container-network"
+      vlan: 200
+      subnet: "10.0.200.0/24"
+      gateway: "10.0.200.1"
+
+storage:
+  local:
+    type: "directory"
+    path: "/var/lib/vz"
+    content: ["images", "vztmpl", "iso"]
+    size: "1 TB NVMe SSD"
+    
+  # Storage allocation on 1TB NVMe SSD
+  partitions:
+    system: "100 GB"      # ProxMox system
+    vm_storage: "700 GB"  # VM disk images
+    backups: "100 GB"     # Local backups
+    templates: "50 GB"    # ISO/templates
+    swap: "50 GB"         # Reserved for swap
+
+backup:
+  schedule: "daily"
+  time: "02:00"
+  retention: 7
+  storage: "shared"

@@ -1,0 +1,88 @@
+# Hardware Specifications - Kanal Infrastructure Server
+# Intel Core i5-13420H based system
+
+hardware:
+  cpu:
+    model: "Intel Core i5-13420H"
+    generation: "13th Gen"
+    cores_physical: 8  # 4 P-cores + 4 E-cores
+    threads: 12        # 4 P-cores with HT + 4 E-cores
+    base_frequency:
+      p_cores: "2.1 GHz"
+      e_cores: "1.5 GHz"
+    boost_frequency:
+      p_cores: "4.6 GHz"
+      e_cores: "3.4 GHz"
+    tdp: "45W"
+    features:
+      - "Intel VT-x"
+      - "Intel VT-d"
+      - "AES-NI"
+      - "AVX2"
+
+  memory:
+    total: "32 GB"
+    type: "DDR5-5600"
+    configuration: "2x 16GB SODIMM"
+    max_frequency: "5600 MT/s"
+    
+  storage:
+    primary:
+      type: "NVMe SSD"
+      capacity: "1 TB"
+      interface: "M.2 2280"
+      protocol: "PCIe 4.0"
+      technology: "TLC"
+      
+  network:
+    wireless:
+      standard: "Wi-Fi 6 (802.11ax)"
+      configuration: "2x2"
+      bluetooth: "5.1+"
+    ethernet: "Integrated Gigabit"
+    
+  graphics:
+    type: "Integrated"
+    model: "Intel Iris Xe Graphics"
+    
+  power:
+    psu: "180W External Adapter"
+    efficiency: "85%"
+
+# ProxMox Resource Allocation Guidelines
+proxmox_allocation:
+  host_reserved:
+    memory: "4 GB"    # Reserve for ProxMox host
+    cpu_cores: 2      # Reserve 1 P-core + 1 E-core
+    
+  vm_allocation:
+    max_memory: "28 GB"
+    max_cpu_cores: 10
+    
+  recommended_vms:
+    - name: "Management VM"
+      memory: "2 GB"
+      cores: 2
+      purpose: "Monitoring, Backup, Management Tools"
+      
+    - name: "Web Services VM"
+      memory: "4 GB"
+      cores: 2
+      purpose: "Web applications, APIs"
+      
+    - name: "Database VM"
+      memory: "6 GB"
+      cores: 2
+      purpose: "Database services"
+      
+    - name: "Container Host"
+      memory: "8 GB"
+      cores: 4
+      purpose: "Docker/LXC containers"
+      
+  storage_allocation:
+    proxmox_system: "100 GB"
+    vm_storage: "700 GB"
+    backups: "100 GB"
+    templates: "50 GB"
+    swap_reserved: "50 GB"
