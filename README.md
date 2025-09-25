@@ -23,10 +23,10 @@ After following this guide, you'll have:
 
 - **CPU**: Intel Core i5-13420H (8 cores/12 threads, up to 4.6 GHz)
 - **Memory**: 32 GB DDR5-5600 (2x 16GB)
-- **Storage**: 1 TB NVMe SSD PCIe 4.0
+- **Storage**: 512 GB NVMe SSD PCIe 4.0 ⚠️ *Compact but sufficient*
 - **Power**: 180W external adapter
 
-**Perfect for virtualization!** ✅
+**Optimized for efficient virtualization!** ✅
 
 ---
 
@@ -53,8 +53,8 @@ After following this guide, you'll have:
 3. **Install ProxMox** on your server
 4. **Run optimization script** for your Intel CPU
 5. **Create VM template** with Ubuntu
-6. **Deploy 5 production VMs**
-7. **Set up automated backups**
+6. **Deploy 6 production VMs** (optimized for 512GB storage)
+7. **Configure storage-efficient backups** (3-day retention)
 
 **Total time**: 4-6 hours | **Difficulty**: Beginner-friendly
 
@@ -65,7 +65,7 @@ After following this guide, you'll have:
 After installation, your system will look like this:
 
 ```
-🖥️ Intel i5-13420H Server (32GB DDR5, 1TB NVMe)
+🖥️ Intel i5-13420H Server (32GB DDR5, 512GB NVMe)
     ↓
 🌐 ProxMox VE Host (https://192.168.1.10:8006)
     ↓
@@ -80,7 +80,8 @@ After installation, your system will look like this:
 └─────────────────────────────────────────┘
 ```
 
-**Resource Usage**: 24GB RAM used, 4GB buffer remaining
+**Resource Usage**: 28GB RAM used, 4GB buffer remaining
+**Storage**: 400GB available for VMs (50GB saved with NAS backup!)
 
 ---
 

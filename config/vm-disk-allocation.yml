@@ -1,0 +1,154 @@
+# VM Disk Allocation for 512GB SSD
+# Optimized for smaller storage capacity
+
+total_storage: "512 GB NVMe SSD"
+available_for_vms: "400 GB"  # Increased! No local backup storage needed
+
+# VM Disk Allocation Strategy (Thin Provisioning)
+vm_disks:
+  management_vm:
+    vm_id: 101
+    allocated: "20 GB"
+    actual_usage: "~10 GB"
+    purpose: "System tools, minimal software"
+    thin_provisioning: true
+
+  web_services_vm:
+    vm_id: 102
+    allocated: "40 GB"
+    actual_usage: "~25 GB"
+    purpose: "FastAPI applications, Python packages, logs"
+    thin_provisioning: true
+    notes: "May need expansion for application data"
+
+  database_vm:
+    vm_id: 103
+    allocated: "100 GB"   # Increased from 80GB
+    actual_usage: "~50 GB"
+    purpose: "PostgreSQL data, indexes, WAL files"
+    thin_provisioning: true
+    notes: "More space for database growth"
+
+  workflow_vm:
+    vm_id: 104
+    allocated: "40 GB"    # Increased from 30GB
+    actual_usage: "~25 GB"
+    purpose: "N8N workflows, Node.js, execution logs"
+    thin_provisioning: true
+
+  monitoring_vm:
+    vm_id: 105
+    allocated: "80 GB"    # Increased from 60GB
+    actual_usage: "~45 GB"
+    purpose: "Grafana, Loki logs, Prometheus metrics"
+    thin_provisioning: true
+    notes: "More space for logs and metrics"
+
+  development_vm:
+    vm_id: 106
+    allocated: "40 GB"
+    actual_usage: "~25 GB"
+    purpose: "Development tools, Git repos, virtual envs"
+    thin_provisioning: true
+
+# Total Allocation Summary (Updated with NAS backup)
+allocation_summary:
+  total_allocated: "320 GB"     # Sum of allocated space (increased!)
+  actual_usage_estimated: "~175 GB"  # Realistic usage
+  available_space: "80 GB"      # Buffer for growth
+  thin_provisioning_savings: "~145 GB"  # More savings!
+
+# Storage Management Guidelines
+management:
+  thin_provisioning:
+    enabled: true
+    description: "Allocate disk space on-demand, not upfront"
+    benefits:
+      - "Save ~115 GB with thin provisioning"
+      - "VMs only use space they actually need"
+      - "Can over-allocate safely"
+
+  monitoring:
+    disk_usage_alerts:
+      warning: "80% of 512GB = 410GB"
+      critical: "90% of 512GB = 460GB"
+
+    per_vm_monitoring:
+      - "Monitor PostgreSQL database growth"
+      - "Watch Loki log storage (can grow fast)"
+      - "Keep eye on development VM (Git repos, packages)"
+
+  cleanup_strategies:
+    daily:
+      - "Rotate application logs"
+      - "Clean package manager cache"
+      - "Remove old temporary files"
+
+    weekly:
+      - "Clean old backup files (keep only 3 days)"
+      - "Vacuum PostgreSQL database"
+      - "Clean Docker images (if used)"
+
+    monthly:
+      - "Review VM disk usage"
+      - "Expand disks if needed"
+      - "Archive old development projects"
+
+# Emergency Procedures
+emergency:
+  disk_full_response:
+    immediate:
+      - "Stop non-critical VMs (Development VM first)"
+      - "Clean old backups and logs"
+      - "Clear package caches"
+
+    short_term:
+      - "Move large files to external storage"
+      - "Reduce backup retention to 1 day temporarily"
+      - "Consider adding external USB storage"
+
+    long_term:
+      - "Upgrade to larger SSD"
+      - "Implement external backup solution"
+      - "Optimize database storage"
+
+# Disk Expansion Plan
+expansion_strategy:
+  vm_priority:
+    1: "Database VM - Most likely to need expansion"
+    2: "Monitoring VM - Log storage can grow quickly"
+    3: "Web Services VM - Application data growth"
+    4: "Development VM - Git repos and packages"
+    5: "Workflow VM - N8N execution history"
+    6: "Management VM - Minimal growth expected"
+
+  expansion_increments:
+    small_expansion: "+10 GB"
+    medium_expansion: "+20 GB"
+    large_expansion: "+40 GB"
+
+# External Storage Options
+external_storage:
+  usb_backup:
+    purpose: "Long-term backup storage"
+    recommended_size: "1 TB USB 3.0 drive"
+    backup_schedule: "Weekly full backup"
+
+  network_storage:
+    purpose: "Shared file storage, archive"
+    options: ["NAS", "Cloud storage", "Network drive"]
+    use_cases: ["Large files", "Archive data", "Media files"]
+
+# Performance Considerations
+performance:
+  ssd_optimization:
+    - "Enable TRIM support"
+    - "Use deadline I/O scheduler"
+    - "Align partitions properly"
+    - "Monitor SSD health regularly"
+
+  vm_optimization:
+    - "Use VirtIO disk drivers"
+    - "Enable write-back caching where safe"
+    - "Regular defragmentation for Windows VMs"
+    - "Monitor I/O latency"

@@ -5,11 +5,18 @@ template:
   
   resources:
     cores: 2
-    memory: 4096        # Increased for 32GB system
-    disk_size: "40G"    # Increased for 1TB storage
+    memory: 4096        # Optimized for 32GB system
+    disk_size: "30G"    # Optimized for 512GB storage
     network: "virtio"
     cpu_type: "host"    # Use host CPU features (Intel i5-13420H)
     cpu_flags: "+aes,+avx2,+sse4.2"
+
+  # Storage optimization for 512GB SSD
+  disk_options:
+    thin_provisioning: true    # Enable thin provisioning
+    cache: "writeback"         # Better performance with SSD
+    discard: true             # Enable TRIM support
+    format: "qcow2"           # Better for thin provisioning
     
   os:
     type: "ubuntu"

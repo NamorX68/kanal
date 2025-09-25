@@ -29,7 +29,7 @@ hardware:
   storage:
     primary:
       type: "NVMe SSD"
-      capacity: "1 TB"
+      capacity: "512 GB"
       interface: "M.2 2280"
       protocol: "PCIe 4.0"
       technology: "TLC"
@@ -81,8 +81,9 @@ proxmox_allocation:
       purpose: "Docker/LXC containers"
       
   storage_allocation:
-    proxmox_system: "100 GB"
-    vm_storage: "700 GB"
-    backups: "100 GB"
-    templates: "50 GB"
-    swap_reserved: "50 GB"
+    proxmox_system: "80 GB"    # ProxMox host system
+    vm_storage: "400 GB"       # VM disk images (increased!)
+    backups: "0 GB"            # External NAS backup (no local storage)
+    templates: "20 GB"         # ISO/templates
+    swap_reserved: "12 GB"     # Reserved for swap
+    # Total: 512 GB (50GB more for VMs!)

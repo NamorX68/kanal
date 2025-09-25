@@ -1,0 +1,188 @@
+# Synology NAS Backup Configuration for ProxMox
+# External backup solution - no local storage required
+
+nas_backup_setup:
+  nas_device: "Synology NAS"
+  connection_type: "NFS"  # or "SMB/CIFS"
+
+  # Network Configuration
+  network:
+    nas_hostname: "synology.local"
+    nas_ip: "192.168.1.100"  # Adjust to your NAS IP
+    backup_path: "/volume1/proxmox-backups"
+
+  # ProxMox Storage Configuration
+  proxmox_storage:
+    storage_id: "nas-backup"
+    type: "nfs"
+    server: "192.168.1.100"
+    export: "/volume1/proxmox-backups"
+    content: ["backup"]
+    options: "vers=3"
+    enabled: true
+
+# Backup Job Configuration
+backup_jobs:
+  daily_backup:
+    schedule: "daily"
+    starttime: "02:00"
+    storage: "nas-backup"
+    retention: 7        # Keep 7 days (or more if desired)
+    compression: "lzo"  # Compress for faster transfer
+    mode: "snapshot"    # VM snapshot backup
+
+    # VM Selection
+    vms_to_backup:
+      - vm_id: 101
+        name: "management-vm"
+        priority: "medium"
+      - vm_id: 102
+        name: "web-services-vm"
+        priority: "high"
+      - vm_id: 103
+        name: "database-vm"
+        priority: "critical"
+      - vm_id: 104
+        name: "workflow-vm"
+        priority: "high"
+      - vm_id: 105
+        name: "monitoring-vm"
+        priority: "medium"
+      - vm_id: 106
+        name: "development-vm"
+        priority: "low"
+
+  weekly_full_backup:
+    schedule: "weekly"
+    starttime: "01:00"
+    day: "sunday"
+    storage: "nas-backup"
+    retention: 4        # Keep 4 weeks
+    compression: "lzo"
+    mode: "stop"        # Full backup (stops VM briefly)
+
+    # Only critical VMs
+    vms_to_backup:
+      - vm_id: 102  # Web Services
+      - vm_id: 103  # Database
+      - vm_id: 104  # Workflow
+
+# NAS Setup Commands
+nas_setup_commands:
+  # On Synology NAS (via DSM or SSH)
+  create_share: |
+    # 1. Create shared folder 'proxmox-backups' in DSM
+    # 2. Enable NFS service in Control Panel > File Services
+    # 3. Configure NFS permissions for ProxMox server IP
+
+  # On ProxMox server
+  add_nas_storage: |
+    # Add NAS storage to ProxMox
+    pvesm add nfs nas-backup --server 192.168.1.100 \
+      --export /volume1/proxmox-backups \
+      --content backup --options vers=3
+
+  test_connection: |
+    # Test NFS connection
+    showmount -e 192.168.1.100
+    mkdir -p /tmp/nas-test
+    mount -t nfs 192.168.1.100:/volume1/proxmox-backups /tmp/nas-test
+
+# Benefits of NAS Backup
+benefits:
+  storage_savings:
+    - "50 GB freed up on local SSD"
+    - "400 GB available for VMs (instead of 350 GB)"
+    - "No backup storage pressure on ProxMox host"
+
+  reliability:
+    - "RAID protection on NAS"
+    - "Multiple backup retention policies"
+    - "Network-based backup isolation"
+    - "Can backup the NAS to cloud/offsite"
+
+  flexibility:
+    - "Longer retention periods (7+ days)"
+    - "Multiple backup schedules"
+    - "Easy restore from NAS web interface"
+    - "Backup verification and integrity checks"
+
+# Network Requirements
+network_requirements:
+  bandwidth: "1 Gbps recommended for backup transfers"
+  latency: "Low latency LAN connection preferred"
+  availability: "NAS must be online during backup windows"
+
+  backup_transfer_estimates:
+    small_vm: "2-5 minutes (10-20 GB backup)"
+    medium_vm: "5-15 minutes (20-50 GB backup)"
+    large_vm: "15-30 minutes (50+ GB backup)"
+
+# Monitoring and Alerts
+monitoring:
+  backup_success_monitoring:
+    - "ProxMox backup log monitoring"
+    - "NAS storage space alerts"
+    - "Failed backup notifications"
+
+  nas_health_monitoring:
+    - "NAS disk health (SMART)"
+    - "RAID status monitoring"
+    - "Network connectivity checks"
+
+# Disaster Recovery
+disaster_recovery:
+  restore_procedures:
+    single_vm: |
+      # Restore single VM from NAS backup
+      qmrestore nas-backup:backup/vzdump-qemu-103-2024_01_15-02_00_03.vma.lzo 103
+
+    full_restore: |
+      # Full disaster recovery from NAS
+      # 1. Reinstall ProxMox
+      # 2. Reconnect to NAS storage
+      # 3. Restore all VMs from latest backups
+
+  backup_verification:
+    schedule: "weekly"
+    process: "Test restore of critical VMs to verify backup integrity"
+
+# Security Considerations
+security:
+  nas_access:
+    - "Restrict NFS access to ProxMox server IP only"
+    - "Use firewall rules to limit backup traffic"
+    - "Enable backup encryption if sensitive data"
+
+  network_security:
+    - "Backup traffic on isolated VLAN (optional)"
+    - "Monitor backup network traffic"
+    - "Regular security updates on NAS"
+
+# Troubleshooting
+troubleshooting:
+  common_issues:
+    nfs_mount_failed:
+      cause: "NFS service not enabled on NAS"
+      solution: "Enable NFS in DSM > Control Panel > File Services"
+
+    slow_backup_transfers:
+      cause: "Network congestion or slow NAS disks"
+      solution: "Check network utilization and NAS performance"
+
+    backup_job_fails:
+      cause: "Insufficient space on NAS or permission issues"
+      solution: "Check NAS storage space and NFS permissions"
+
+# Cost Analysis
+cost_benefit:
+  storage_efficiency:
+    local_ssd_saved: "50 GB (10% of total capacity)"
+    vm_storage_gained: "50 GB additional for VMs"
+    backup_capacity: "Unlimited (depends on NAS size)"
+
+  operational_benefits:
+    - "Centralized backup management"
+    - "Better backup retention policies"
+    - "Reduced wear on ProxMox SSD"
+    - "Offloads backup I/O from production storage"

@@ -37,18 +37,44 @@ storage:
     type: "directory"
     path: "/var/lib/vz"
     content: ["images", "vztmpl", "iso"]
-    size: "1 TB NVMe SSD"
-    
-  # Storage allocation on 1TB NVMe SSD
+    size: "512 GB NVMe SSD"
+
+  # Storage allocation on 512GB NVMe SSD (no local backups)
   partitions:
-    system: "100 GB"      # ProxMox system
-    vm_storage: "700 GB"  # VM disk images
-    backups: "100 GB"     # Local backups
-    templates: "50 GB"    # ISO/templates
-    swap: "50 GB"         # Reserved for swap
+    system: "80 GB"       # ProxMox system
+    vm_storage: "400 GB"  # VM disk images (increased!)
+    templates: "20 GB"    # ISO/templates
+    swap: "12 GB"         # Reserved for swap
+    # Total: 512 GB (no backup storage needed!)
+
+  # External backup to Synology NAS
+  nas_backup:
+    type: "NFS/SMB"
+    target: "Synology NAS"
+    benefits:
+      - "No local storage used for backups"
+      - "More space available for VMs (400GB instead of 350GB)"
+      - "Network-attached storage redundancy"
+      - "Can keep longer retention (7+ days)"
 
 backup:
   schedule: "daily"
   time: "02:00"
-  retention: 7
-  storage: "shared"
+  retention: 7           # Back to 7 days (NAS has plenty space!)
+  storage: "nas-backup"  # Synology NAS storage
+  compression: "lzo"     # Still compress for faster transfer
+
+  # NAS backup strategy
+  nas_configuration:
+    storage_id: "nas-backup"
+    type: "nfs"           # or "cifs" for SMB
+    server: "synology.local"  # Your NAS hostname/IP
+    path: "/volume1/proxmox-backups"
+    options: "vers=3"     # NFS version
+
+  benefits:
+    - "7 days retention (or more if desired)"
+    - "No local storage impact"
+    - "Redundant storage on NAS"
+    - "Network backup allows for offsite copies"
+    - "50GB extra space freed up for VMs"

@@ -1,0 +1,306 @@
+# Service Configuration Files for Production Stack
+
+# FastAPI Application Configuration
+fastapi_config:
+  rest_api:
+    file_path: "/opt/api/config.py"
+    content: |
+      import os
+      from pydantic_settings import BaseSettings
+
+      class Settings(BaseSettings):
+          database_url: str = "postgresql://api_user:password@10.0.100.103:5432/api_production"
+          redis_url: str = "redis://10.0.100.103:6379"
+          secret_key: str = os.getenv("SECRET_KEY")
+          debug: bool = False
+          cors_origins: list = ["https://api.kanal.local"]
+
+          # Monitoring
+          prometheus_metrics: bool = True
+          log_level: str = "INFO"
+
+          class Config:
+              env_file = ".env"
+
+  mcp_server:
+    file_path: "/opt/mcp/config.py"
+    content: |
+      from pydantic_settings import BaseSettings
+
+      class MCPSettings(BaseSettings):
+          database_url: str = "postgresql://mcp_user:password@10.0.100.103:5432/api_production"
+          model_endpoint: str = "http://localhost:11434"
+          tools_enabled: list = ["database", "file_system", "web_search"]
+          max_context_length: int = 4096
+
+          class Config:
+              env_file = ".env"
+
+# SystemD Service Files
+systemd_services:
+  rest_api:
+    file_path: "/etc/systemd/system/api.service"
+    content: |
+      [Unit]
+      Description=FastAPI REST API
+      After=network.target
+
+      [Service]
+      User=api
+      Group=api
+      WorkingDirectory=/opt/api
+      Environment=PATH=/opt/api/venv/bin
+      ExecStart=/opt/api/venv/bin/gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 127.0.0.1:8000
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+
+  mcp_server:
+    file_path: "/etc/systemd/system/mcp.service"
+    content: |
+      [Unit]
+      Description=MCP Server
+      After=network.target
+
+      [Service]
+      User=mcp
+      Group=mcp
+      WorkingDirectory=/opt/mcp
+      Environment=PATH=/opt/mcp/venv/bin
+      ExecStart=/opt/mcp/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8001
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+
+# Nginx Configuration
+nginx_config:
+  main_site:
+    file_path: "/etc/nginx/sites-available/api.kanal.local"
+    content: |
+      upstream rest_api {
+          server 127.0.0.1:8000;
+      }
+
+      upstream mcp_server {
+          server 127.0.0.1:8001;
+      }
+
+      server {
+          listen 80;
+          server_name api.kanal.local;
+          return 301 https://$server_name$request_uri;
+      }
+
+      server {
+          listen 443 ssl http2;
+          server_name api.kanal.local;
+
+          ssl_certificate /etc/letsencrypt/live/api.kanal.local/fullchain.pem;
+          ssl_certificate_key /etc/letsencrypt/live/api.kanal.local/privkey.pem;
+
+          # API endpoints
+          location /api/v1/ {
+              proxy_pass http://rest_api;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
+
+          # MCP endpoints
+          location /mcp/ {
+              proxy_pass http://mcp_server;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
+
+          # Health check
+          location /health {
+              access_log off;
+              return 200 "healthy\n";
+              add_header Content-Type text/plain;
+          }
+      }
+
+# PostgreSQL Configuration
+postgresql_config:
+  main_config:
+    file_path: "/etc/postgresql/15/main/postgresql.conf"
+    key_settings: |
+      # Memory settings for 8GB VM
+      shared_buffers = 2GB
+      effective_cache_size = 6GB
+      work_mem = 64MB
+      maintenance_work_mem = 512MB
+
+      # Connection settings
+      max_connections = 200
+      listen_addresses = '*'
+
+      # Logging for monitoring
+      log_statement = 'all'
+      log_min_duration_statement = 1000
+
+      # Performance
+      checkpoint_completion_target = 0.9
+      wal_buffers = 64MB
+
+  hba_config:
+    file_path: "/etc/postgresql/15/main/pg_hba.conf"
+    additions: |
+      # Allow connections from VM network
+      host    all             all             10.0.100.0/24           md5
+      host    api_production  api_user        10.0.100.102/32         md5
+      host    n8n_workflows   n8n_user        10.0.100.104/32         md5
+
+# N8N Configuration
+n8n_config:
+  environment:
+    file_path: "/opt/n8n/.env"
+    content: |
+      DB_TYPE=postgresdb
+      DB_POSTGRESDB_HOST=10.0.100.103
+      DB_POSTGRESDB_PORT=5432
+      DB_POSTGRESDB_DATABASE=n8n_workflows
+      DB_POSTGRESDB_USER=n8n_user
+      DB_POSTGRESDB_PASSWORD=n8n_password
+
+      N8N_BASIC_AUTH_ACTIVE=true
+      N8N_BASIC_AUTH_USER=admin
+      N8N_BASIC_AUTH_PASSWORD=secure_password
+
+      WEBHOOK_URL=https://workflows.kanal.local
+      N8N_HOST=0.0.0.0
+      N8N_PORT=5678
+      N8N_PROTOCOL=https
+
+      # Git integration
+      N8N_VERSION_NOTIFICATIONS_ENABLED=false
+      EXECUTIONS_PROCESS=main
+
+# Prometheus Configuration
+prometheus_config:
+  main_config:
+    file_path: "/opt/prometheus/prometheus.yml"
+    content: |
+      global:
+        scrape_interval: 15s
+        evaluation_interval: 15s
+
+      rule_files:
+        - "/opt/prometheus/rules/*.yml"
+
+      alerting:
+        alertmanagers:
+          - static_configs:
+              - targets:
+                - localhost:9093
+
+      scrape_configs:
+        # Prometheus itself
+        - job_name: 'prometheus'
+          static_configs:
+            - targets: ['localhost:9090']
+
+        # FastAPI applications
+        - job_name: 'fastapi-rest'
+          static_configs:
+            - targets: ['10.0.100.102:8000']
+          metrics_path: '/metrics'
+
+        - job_name: 'fastapi-mcp'
+          static_configs:
+            - targets: ['10.0.100.102:8001']
+          metrics_path: '/metrics'
+
+        # PostgreSQL
+        - job_name: 'postgresql'
+          static_configs:
+            - targets: ['10.0.100.103:9187']
+
+        # N8N
+        - job_name: 'n8n'
+          static_configs:
+            - targets: ['10.0.100.104:5678']
+          metrics_path: '/metrics'
+
+        # Node exporters on all VMs
+        - job_name: 'node-exporter'
+          static_configs:
+            - targets:
+              - '10.0.100.101:9100'  # Management VM
+              - '10.0.100.102:9100'  # Web Services VM
+              - '10.0.100.103:9100'  # Database VM
+              - '10.0.100.104:9100'  # Workflow VM
+              - '10.0.100.105:9100'  # Monitoring VM
+              - '10.0.100.106:9100'  # Development VM
+
+# Grafana Configuration
+grafana_config:
+  datasources:
+    file_path: "/etc/grafana/provisioning/datasources/datasources.yml"
+    content: |
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://localhost:9090
+          access: proxy
+          isDefault: true
+
+        - name: Loki
+          type: loki
+          url: http://localhost:3100
+          access: proxy
+
+        - name: PostgreSQL
+          type: postgres
+          url: 10.0.100.103:5432
+          database: monitoring
+          user: grafana_user
+          password: grafana_password
+
+# Loki Configuration
+loki_config:
+  main_config:
+    file_path: "/opt/loki/loki.yml"
+    content: |
+      auth_enabled: false
+
+      server:
+        http_listen_port: 3100
+
+      ingester:
+        lifecycler:
+          address: 127.0.0.1
+          ring:
+            kvstore:
+              store: inmemory
+            replication_factor: 1
+        chunk_idle_period: 5m
+        chunk_retain_period: 30s
+
+      schema_config:
+        configs:
+        - from: 2020-10-24
+          store: boltdb
+          object_store: filesystem
+          schema: v11
+          index:
+            prefix: index_
+            period: 168h
+
+      storage_config:
+        boltdb:
+          directory: /opt/loki/data/index
+        filesystem:
+          directory: /opt/loki/data/chunks
+
+      limits_config:
+        enforce_metric_name: false
+        reject_old_samples: true
+        reject_old_samples_max_age: 168h

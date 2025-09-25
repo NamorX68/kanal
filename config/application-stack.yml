@@ -1,0 +1,202 @@
+# Application Stack Configuration
+# FastAPI + N8N + PostgreSQL + Monitoring Stack
+
+applications:
+
+  # Web Services VM - FastAPI Applications
+  web_services:
+    vm_id: 102
+    domain: "api.kanal.local"
+
+    applications:
+      rest_api:
+        framework: "FastAPI"
+        port: 8000
+        path: "/api/v1/"
+        description: "REST API endpoints"
+        features:
+          - "Authentication"
+          - "CRUD operations"
+          - "Data validation"
+          - "OpenAPI documentation"
+
+      mcp_server:
+        framework: "FastAPI"
+        port: 8001
+        path: "/mcp/"
+        description: "MCP (Model Context Protocol) Server"
+        features:
+          - "Tool definitions"
+          - "Context management"
+          - "AI model integration"
+
+    reverse_proxy:
+      software: "Nginx"
+      ssl: true
+      config: |
+        server {
+            listen 443 ssl;
+            server_name api.kanal.local;
+
+            location /api/v1/ {
+                proxy_pass http://127.0.0.1:8000;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+            }
+
+            location /mcp/ {
+                proxy_pass http://127.0.0.1:8001;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+            }
+        }
+
+  # Database VM - PostgreSQL
+  database:
+    vm_id: 103
+    software: "PostgreSQL 15"
+    port: 5432
+
+    databases:
+      - name: "api_production"
+        description: "Main application database"
+        tables: ["users", "projects", "api_keys"]
+
+      - name: "n8n_workflows"
+        description: "N8N workflow and execution data"
+        tables: ["workflow", "execution", "credentials"]
+
+      - name: "monitoring"
+        description: "Application metrics and logs"
+        tables: ["metrics", "events", "alerts"]
+
+    admin_tools:
+      - name: "pgAdmin 4"
+        port: 5050
+        access: "http://10.0.100.103:5050"
+
+  # Workflow VM - N8N Orchestration
+  workflow:
+    vm_id: 104
+    software: "N8N"
+    port: 5678
+
+    workflows:
+      deployment_pipeline:
+        trigger: "Git webhook"
+        description: "Automated deployment from Dev to Production"
+        steps:
+          - "Git pull on Web Services VM"
+          - "Install dependencies"
+          - "Run tests"
+          - "Restart services"
+          - "Health check"
+          - "Notification"
+
+      data_processing:
+        trigger: "Schedule (hourly)"
+        description: "Process and transform data"
+        steps:
+          - "Fetch data from APIs"
+          - "Transform data"
+          - "Store in PostgreSQL"
+          - "Update monitoring metrics"
+
+      backup_automation:
+        trigger: "Schedule (daily)"
+        description: "Automated database backups"
+        steps:
+          - "Create PostgreSQL dump"
+          - "Compress backup file"
+          - "Upload to storage"
+          - "Cleanup old backups"
+
+  # Monitoring VM - Observability Stack
+  monitoring:
+    vm_id: 105
+
+    stack:
+      grafana:
+        port: 3000
+        purpose: "Visualization and dashboards"
+        dashboards:
+          - "API Performance"
+          - "Database Health"
+          - "N8N Workflow Status"
+          - "System Resources"
+
+      prometheus:
+        port: 9090
+        purpose: "Metrics collection and alerting"
+        targets:
+          - "Web Services VM (FastAPI metrics)"
+          - "Database VM (PostgreSQL metrics)"
+          - "Workflow VM (N8N metrics)"
+          - "System metrics (node_exporter)"
+
+      loki:
+        port: 3100
+        purpose: "Log aggregation and analysis"
+        sources:
+          - "FastAPI application logs"
+          - "Nginx access logs"
+          - "PostgreSQL logs"
+          - "N8N workflow logs"
+          - "System logs"
+
+  # Development VM - Python Development
+  development:
+    vm_id: 106
+
+    tools:
+      - name: "Python 3.11"
+        purpose: "FastAPI development"
+      - name: "VS Code Server"
+        port: 8080
+        purpose: "Web-based IDE"
+      - name: "Git"
+        purpose: "Version control"
+      - name: "Docker CLI"
+        purpose: "Container testing"
+
+    development_workflow:
+      - "Clone repository"
+      - "Create virtual environment"
+      - "Install dependencies"
+      - "Develop and test locally"
+      - "Commit and push to Git"
+      - "N8N triggers deployment"
+
+# Network Configuration
+networking:
+  internal_domain: "kanal.local"
+
+  service_discovery:
+    database: "10.0.100.103:5432"
+    n8n: "10.0.100.104:5678"
+    grafana: "10.0.100.105:3000"
+    prometheus: "10.0.100.105:9090"
+
+  ssl_certificates:
+    method: "Let's Encrypt"
+    domains:
+      - "api.kanal.local"
+      - "workflows.kanal.local"
+      - "monitoring.kanal.local"
+
+# Deployment Pipeline
+deployment:
+  source: "Development VM"
+  target: "Web Services VM"
+  orchestrator: "N8N (Workflow VM)"
+
+  steps:
+    1: "Code push to Git repository"
+    2: "Git webhook triggers N8N workflow"
+    3: "N8N pulls code to Web Services VM"
+    4: "Dependencies installation"
+    5: "Unit tests execution"
+    6: "Service restart (Gunicorn + Nginx)"
+    7: "Health check verification"
+    8: "Monitoring alerts update"
+    9: "Success/failure notification"
